@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LightControlCustom.Vendors.MysticLight;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -18,6 +19,7 @@ using System.Windows.Shapes;
 
 namespace LightControlCustom
 {
+
 
     public enum MLAPI_Status : int
     {
@@ -134,59 +136,78 @@ namespace LightControlCustom
             // found device list, populate dropdown 1
             Led1.ItemsSource = new ObservableCollection<String>(devList);
 
-            List<LED_Info> list_LED_Info = new List<LED_Info>();
 
             // TODO: remove for loop, only do for selected device
             for (int i = 0; i < devList.Length; i++)
             {
-                ret = MLAPI_GetDeviceName(devList[i], out devName);
-                for (int d = 0; d < devName.Length; d++)
-                {
-                    Console.WriteLine("{0}[{1}]:{2}", devList[i], d, devName[d]);
-                    textBox_Result.AppendText(string.Format("{0}[{1}]:{2}\n", devList[i], d, devName[d]));
-                }
+                populateLeds(devList[i]);
+            }
+        }
 
-                string sName;
-                ret = MLAPI_GetDeviceNameEx(devList[i], 0, out sName);
+        private void populateLeds(String deviceName)
+        {
+            List<LED_Info> list_LED_Info = new List<LED_Info>();
+            MLAPI_Status ret;
+            String[] devNames;
+            // this is confusing, why there are list device names for a single device name?
+            // empty for me!
+            ret = MLAPI_GetDeviceName(deviceName, out devNames);
+            for (int d = 0; d < devNames.Length; d++)
+            {
+                Console.WriteLine("{0}[{1}]:{2}", deviceName, d, devNames[d]);
+                textBox_Result.AppendText(string.Format("{0}[{1}]:{2}\n", deviceName, d, devNames[d]));
+            }
 
-                List<string> ledNameList = new List<string>();
-                int ledIndex = 0;
+            string sName;
+            ret = MLAPI_GetDeviceNameEx(deviceName, 0, out sName);
 
-                string ledName;
-                string[] ledStyles;
-                // only do 0
-                MLAPI_Status ledRet = MLAPI_GetLedInfo(devList[i], 0, out ledName, out ledStyles);
+            List<string> ledNameList = new List<string>();
+            int ledIndex = 0;
 
-                textBox_Result.AppendText($"LED[{ledIndex}]: {ledName}\n");
-                textBox_Result.AppendText($"  Styles: {string.Join(", ", ledStyles)}\n");
+            string ledName;
+            string[] ledStyles;
+            // only do 0
+            MLAPI_Status ledRet = MLAPI_GetLedInfo(deviceName, 0, out ledName, out ledStyles);
 
-                Effect1.ItemsSource = new ObservableCollection<String>(ledStyles);
+            if (ledRet != MLAPI_Status.MLAPI_OK)
+            {
+                throw new MLAPIException(ledRet);
+            }
 
-                ledNameList.Add(ledName);
+            textBox_Result.AppendText($"LED[{ledIndex}]: {ledName}\n");
+            textBox_Result.AppendText($"  Styles: {string.Join(", ", ledStyles)}\n");
 
-                LedNames = ledNameList.ToArray();
-                textBox_Result.AppendText($"Total LEDs found: {LedNames.Length}\n");
+            Effect1.ItemsSource = new ObservableCollection<String>(ledStyles);
+            Effect1.IsEnabled = true;
 
-                ret = MLAPI_GetLedName(devList[i], out LedName);
-                if (ret == MLAPI_Status.MLAPI_OK)
-                {
-                    LED_Info info = new LED_Info();
+            ledNameList.Add(ledName);
 
-                    Console.WriteLine("list of LED Name:\nEx. Device Name[Area Index]:LED Name");
-                    textBox_Result.AppendText("list of LED Name:\nEx. Device Name[Area Index]:LED Name\n");
+            LedNames = ledNameList.ToArray();
+            textBox_Result.AppendText($"Total LEDs found: {LedNames.Length}\n");
 
-                    for (int L = 0; L < LedName.Length; L++)
-                    {
-                        string[] words = LedName[L].Split(':');
+            ret = MLAPI_GetLedName(deviceName, out LedName);
+            if (ret != MLAPI_Status.MLAPI_OK)
+            {
+                displayDiagnostics(ret);
+                return;
+            }
 
-                        Console.WriteLine("{0}[{1}]:{2}", devList[i], words[0], words[1]);
-                        textBox_Result.AppendText(string.Format("{0}[{1}]:{2}\n", devList[i], words[0], words[1]));
+            // below is debug info
+            LED_Info info = new LED_Info();
 
-                        info.AreaIndex = Convert.ToInt32(words[0]);
-                        info.FullName = words[1];
-                        list_LED_Info.Add(info);
-                    }
-                }
+            Console.WriteLine("list of LED Name:\nEx. Device Name[Area Index]:LED Name");
+            textBox_Result.AppendText("list of LED Name:\nEx. Device Name[Area Index]:LED Name\n");
+
+            for (int L = 0; L < LedName.Length; L++)
+            {
+                string[] words = LedName[L].Split(':');
+
+                Console.WriteLine("{0}[{1}]:{2}", deviceName, words[0], words[1]);
+                textBox_Result.AppendText(string.Format("{0}[{1}]:{2}\n", deviceName, words[0], words[1]));
+
+                info.AreaIndex = Convert.ToInt32(words[0]);
+                info.FullName = words[1];
+                list_LED_Info.Add(info);
             }
         }
 
