@@ -1,0 +1,14 @@
+﻿<Window x:Class="LightControlCustom.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MysticLight" Closing="Window_Closing">
+    <StackPanel>
+        <TextBox x:Name="textBox_Diagnostics"/>
+        <TextBlock>LED Selected:</TextBlock>
+        <ComboBox Name="Led1" Width="150" Height="25"/>
+        <TextBlock>Effect Selected:</TextBlock>
+        <ComboBox Name="Effect1" Width="150" Height="25" DisplayMemberPath="DisplayName" SelectedValuePath="Value" IsEnabled="False"/>
+        <Button x:Name="btn_Test" Content="Set Effect" Click="btn_Test_Click"/>
+        <TextBox x:Name="textBox_Result" IsReadOnly="True" Height="200"/>
+    </StackPanel>
+</Window>
