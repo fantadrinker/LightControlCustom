@@ -1,8 +1,10 @@
-﻿using System;
+﻿using LightControlCustom.Vendors.Common;
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
+using System.Xml.Linq;
 using static LightControlCustom.MainWindow;
 
 namespace LightControlCustom.Vendors.MysticLight
@@ -40,7 +42,8 @@ namespace LightControlCustom.Vendors.MysticLight
         extern static MLAPI_Status MLAPI_GetLedColor([MarshalAs(UnmanagedType.BStr)] string type, int index, out int R, out int G, out int B);
 
         [DllImport("MysticLight_SDK.dll", SetLastError = true, CallingConvention = CallingConvention.Cdecl, EntryPoint = "MLAPI_GetLedStyle")]
-        extern static MLAPI_Status MLAPI_GetLedStyle([MarshalAs(UnmanagedType.BStr)] string type, int index, [MarshalAs(UnmanagedType.SafeArray, SafeArraySubType = VarEnum.VT_BSTR)] out string[] style);
+        // extern static MLAPI_Status MLAPI_GetLedStyle([MarshalAs(UnmanagedType.BStr)] string type, int index, [MarshalAs(UnmanagedType.SafeArray, SafeArraySubType = VarEnum.VT_BSTR)] out string[] style);
+        extern static MLAPI_Status MLAPI_GetLedStyle([MarshalAs(UnmanagedType.BStr)] string type, int index, [MarshalAs(UnmanagedType.BStr)] out string style);
 
         [DllImport("MysticLight_SDK.dll", SetLastError = true, CallingConvention = CallingConvention.Cdecl, EntryPoint = "MLAPI_SetLedColor")]
         extern static MLAPI_Status MLAPI_SetLedColor([MarshalAs(UnmanagedType.BStr)] string type, int index, int R, int G, int B);
@@ -70,6 +73,10 @@ namespace LightControlCustom.Vendors.MysticLight
 
         public String errorMessage { get; private set; }
 
+        public Boolean hasError { get; private set; }
+
+        public Boolean initialized { get; private set; }
+
         public void callback()
         {
             //This is the function which will be called by the DLL
@@ -87,8 +94,10 @@ namespace LightControlCustom.Vendors.MysticLight
             if (ret != MLAPI_Status.MLAPI_OK)
             {
                 this.errorMessage = constructErrorMessage(ret);
+                this.hasError = true;
                 return;
             }
+            this.hasError = false;
 
             // Register Mystic Light Control Notify event
             CallbackDelegate CallbackDelegateInstance = new CallbackDelegate(callback);
@@ -98,13 +107,100 @@ namespace LightControlCustom.Vendors.MysticLight
             {
                 this.errorMessage = constructErrorMessage(ret);
             }
+
+            this.initialized = true;
+        }
+
+        public MLDevice[]? getDeviceList()
+        {
+            // TODO: what to do with LedCount?
+            String[] ledCount = null;
+            String[] deviceList = null;
+            MLAPI_Status ret = MLAPI_GetDeviceInfo(out deviceList, out ledCount);
+            if (ret != MLAPI_Status.MLAPI_OK)
+            {
+                this.errorMessage = constructErrorMessage(ret);
+                return null;
+            }
+
+            // TODO: get proper device name, currently my 5060 ti shows as MSI_VGA
+            return deviceList.Select((dev, idx) => new MLDevice(dev, idx)).ToArray();
+        }
+
+        public String? getDeviceName(MLDevice device)
+        {
+            MLAPI_Status ret;
+
+            String sName;
+
+            // first try getDeviceNameEx
+            ret = MLAPI_GetDeviceNameEx(device.name, 0, out sName);
+            if (ret != MLAPI_Status.MLAPI_OK)
+            {
+                this.errorMessage = constructErrorMessage(ret);
+                return null;
+            }
+
+            return sName;
+        }
+
+        public MLLed? getDeviceLed(MLDevice dev)
+        {
+            MLAPI_Status ret;
+
+            String ledName;
+            String[] ledStyles;
+
+            ret = MLAPI_GetLedInfo(dev.name, dev.idx, out ledName, out ledStyles);
+            if (ret != MLAPI_Status.MLAPI_OK)
+            {
+                this.errorMessage = constructErrorMessage(ret);
+                return null;
+            }
+
+            return new MLLed(dev.name, ledName, ledStyles);
+        }
+
+
+        public void setLedStyle(MLDevice device, String style)
+        {
+            MLAPI_Status ret = MLAPI_SetLedStyle(device.name, device.idx, style);
+            if (ret != MLAPI_Status.MLAPI_OK)
+            {
+                this.errorMessage = constructErrorMessage(ret);
+                throw new MLAPIException(ret);
+            }
+            return;
+        }
+
+        public String? getCurrentLedStyle(MLDevice device)
+        {
+            string style;
+            MLAPI_Status ret = MLAPI_GetLedStyle(device.name, device.idx, out style);
+            if (ret != MLAPI_Status.MLAPI_OK)
+            {
+                this.errorMessage = constructErrorMessage(ret);
+                return null;
+            }
+            return style;
         }
 
 
         private String constructErrorMessage(MLAPI_Status stat)
         {
-            // todo
-            return "";
+            String error;
+            MLAPI_Status ret = MLAPI_GetErrorMessage((int) stat, out error);
+            return error;
+        }
+
+        public void release()
+        {
+            MLAPI_Release();
+        }
+
+        ~MysticLightProxy()
+        {
+            MLAPI_Release();
         }
 
     }

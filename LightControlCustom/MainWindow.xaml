@@ -4,11 +4,11 @@
         Title="MysticLight" Closing="Window_Closing">
     <StackPanel>
         <TextBox x:Name="textBox_Diagnostics"/>
-        <TextBlock>LED Selected:</TextBlock>
-        <ComboBox Name="Led1" Width="150" Height="25"/>
+        <TextBlock>Device Selected:</TextBlock>
+        <ComboBox Name="Device1" Width="150" Height="25" SelectionChanged="Device1_SelectionChanged" DisplayMemberPath="DisplayName" SelectedValuePath="DeviceId" />
         <TextBlock>Effect Selected:</TextBlock>
-        <ComboBox Name="Effect1" Width="150" Height="25" DisplayMemberPath="DisplayName" SelectedValuePath="Value" IsEnabled="False"/>
-        <Button x:Name="btn_Test" Content="Set Effect" Click="btn_Test_Click"/>
+        <ComboBox Name="Effect1" Width="150" Height="25" IsEnabled="False"/>
+        <Button x:Name="SetEffectButton" Content="Set Effect" Click="btn_Set_Effect"/>
         <TextBox x:Name="textBox_Result" IsReadOnly="True" Height="200"/>
     </StackPanel>
 </Window>
